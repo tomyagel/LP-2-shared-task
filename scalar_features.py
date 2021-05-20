@@ -111,9 +111,6 @@ def fleschReadingEaseScore(text):
 
     for word in words:
         nr_syllables = nr_syllables + syllables.estimate(word)
-#     print(n_words)
-#     print(sentences)
-#     print(nr_syllables)
 
     return 206.835 - 1.015 * (n_words / sentences) - 84.6 * (nr_syllables / n_words)
 
@@ -138,10 +135,7 @@ def three_cons_chars(text):
 
 def punctuation_freq(text):
     str2 = "".join(m for m in text if m in punctuation)
-    counts = Counter(str2)
-    freqs = {k: v for k, v in counts.items()}
-    # print(freqs)
-    return (sum(freqs.values())) / len(nltk.word_tokenize(text))
+    return len(str2) / len(nltk.word_tokenize(text))
 
 
 def stopword_freq(text):
@@ -164,37 +158,6 @@ def stopword_freq_new(text, most_common):
 def cons_caps(text):
     cons_caps = re.findall(r"(\b(?:[A-Z]+[A-Z]+)\b)", text)
     return len(cons_caps) / len(nltk.word_tokenize(text))
-
-
-def finegrainpunct(text):
-    #     dots = re.findall(r"(\.{2,10})", text)
-    dots = ['..', '...', '....', '.....', '......',
-            '.......', '........', '.........', '..........']
-    tokens = wordpunct_tokenize(text)
-    comma = 0
-    exclamation_m = 0
-    question_m = 0
-    colon = 0
-    semicolon = 0
-    ddd = 0
-    tokes = len(tokens)
-    for token in tokens:
-        if token == ',':
-            comma = comma + 1
-        elif token == '!':
-            exclamation_m = exclamation_m + 1
-        elif token == '?':
-            question_m = question_m + 1
-        elif token == ':':
-            colon = colon + 1
-        elif token == ';':
-            semicolon = semicolon + 1
-        elif token in dots:
-            ddd = ddd + 1
-        else:
-            pass
-    return comma / tokes, exclamation_m / tokes, question_m / tokes, \
-        colon / tokes, semicolon / tokes, ddd / tokes
 
 
 def curses(text):
@@ -221,15 +184,8 @@ def get_all_features(most_common_words):
     scalar_feature_functions = [
         richness,
         avg_words,
-        avg_chars,
-        # fleschReadingEaseScore,
-        num_emo,
-        three_cons_chars,
-        # stopword_freq,
-        stopword_freq_new_feature,
+        fleschReadingEaseScore,
         punctuation_freq,
-        curses,
-        cons_caps
     ]
 
     return scalar_feature_functions
@@ -239,13 +195,6 @@ def get_all_feature_names():
     return [
         'richness',
         'avg_words',
-        'avg_chars',
-        # 'fleschReadingEaseScore',
-        'num_emo',
-        'three_cons_chars',
-        # stopword_freq,
-        'stopword_freq_new_feature',
+        'fleschReadingEaseScore',
         'punctuation_freq',
-        'curses',
-        'cons_caps'
     ]

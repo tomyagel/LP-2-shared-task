@@ -70,30 +70,26 @@ def bigrams_per_line(text):
 
 
 grammar = r"""
-    Adj:{<JJ|JJS|JJR>}
-    AP: {<Adj><NN|NNS|NNP|NNPS>}
-    AP: {<Adj>*<AP|VP>}
-    VP: {<VB.*><NP|PP|AP|Adj>*}
-    NP: {<.*>*}
-        }<[\.VI].*>+{
-        <.*>}{<DT>
-    PP: {<IN><NP>}
-    VP: {<VB.*><NP|PP|AP>*}
-        {<VB|VBD|VBN|VBP|VBZ>*(<NN|NNS|NNP|NNPS>(<''><POS>)?)+}
-        {(<MD|TO|RB.*|VB|VBD|VBN|VBP|VBZ>)+}
-        {<VBZ><VBG>}
+  NP:
+      {<DT|WDT|PP\$|PRP\$>?<\#|CD>*(<JJ|JJS|JJR><VBG|VBN>?)*(<NN|NNS|NNP|NNPS>(<''><POS>)?)+}
+      {<DT|WDT|PP\$|PRP\$><JJ|JJS|JJR>*<CD>}
+      {<DT|WDT|PP\$|PRP\$>?<CD>?(<JJ|JJS|JJR><VBG>?)}
+      {<DT>?<PRP|PRP\$>}
+      {<WP|WP\$>}
+      {<DT|WDT>}
+      {<JJR>}
+      {<EX>}
+      {<CD>+}
+  VP: {<VBZ><VBG>}
+      {(<MD|TO|RB.*|VB|VBD|VBN|VBP|VBZ>)+}
     """
 
 Reg_parser = nltk.RegexpParser(grammar)
 
 
 class PosVectorizer():
-    def __init__(self, vec_type, pos_tags):
-        self.vectorizer = vec_type()
-        self.pos_tags = pos_tags
-
-    def fit(self, texts):
-        self.vectorizer.fit(self.pos_tags)
+    def __init__(self, vec_type, n=1):
+        self.vectorizer = vec_type(ngram_range=(n, n))
 
     def transform(self, texts):
         return self.vectorizer.transform(get_pos_tags(texts))
@@ -133,7 +129,10 @@ class PosSubtreeVectorizer():
 
 class PunctuationFreqVectorizer():
     def __init__(self):
-        self.n = 0
+        pass
+
+    def fit(self, texts):
+        pass
 
     def transform(self, texts):
         m = []
@@ -214,17 +213,28 @@ def get_vectorizers(train_model, most_common_words, text_pairs=None):
         analyzer='char', ngram_range=(3, 3), max_features=2000)
     vec_char_tfidf = TfidfVectorizer(
         analyzer='char', ngram_range=(3, 3), max_features=2000)
-    # vec_pos_count = PosVectorizer(CountVectorizer, all_pos)
-    vec_pos_tfidf = PosVectorizer(TfidfVectorizer, all_pos)
+    # vec_pos_count = PosVectorizer(CountVectorizer)
+    vec_pos_tfidf = PosVectorizer(TfidfVectorizer)
+    vec_pos_tfidf_bigrams = PosVectorizer(TfidfVectorizer, n=2)
+    vec_pos_subtree = PosSubtreeVectorizer()
+    vec_punc_freq = PunctuationFreqVectorizer()
+    vec_stopwords = TfidfVectorizer(vocabulary=stopwords.words('english'))
+
+    def fit_pos_vec(pos_vec, _):
+        pos_vec.vectorizer.fit(tqdm(all_pos))
+
+    PosVectorizer.fit = fit_pos_vec
 
     vectorizer_function_names = get_all_vectorizer_names()
     vectorizers = [
-        # vec_word_ngram,
         vec_word_tfidf,
         vec_char_ngram,
         vec_char_tfidf,
-        # vec_pos_count,
         vec_pos_tfidf,
+        vec_pos_tfidf_bigrams,
+        vec_pos_subtree,
+        vec_punc_freq,
+        vec_stopwords,
     ]
 
     for i in range(len(vectorizers)):
@@ -232,7 +242,6 @@ def get_vectorizers(train_model, most_common_words, text_pairs=None):
         path = 'model/{}.pickle'.format(vectorizer_function_names[i])
 
         # if train_model:
-        # if False:
         if not os.path.isfile(path):
             vectorizers[i].fit(
                 tqdm(PairIter(text_pairs), total=len(text_pairs) * 2))
@@ -251,10 +260,12 @@ def get_vectorizers(train_model, most_common_words, text_pairs=None):
 
 def get_all_vectorizer_names():
     return [
-        # 'vec_word_ngram',
         'vec_word_tfidf',
         'vec_char_ngram',
         'vec_char_tfidf',
-        # 'vec_pos_count',
         'vec_pos_tfidf',
+        'vec_pos_tfidf_bigrams',
+        'vec_pos_subtree',
+        'vec_punc_freq',
+        'vec_stopwords',
     ]

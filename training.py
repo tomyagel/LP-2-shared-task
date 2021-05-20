@@ -13,11 +13,9 @@ from sklearn.svm import SVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.datasets import make_classification
 from sklearn.mixture import GaussianMixture
-from sklearn.model_selection import cross_val_score, StratifiedKFold
-from sklearn.base import BaseEstimator
-from sklearn.metrics import accuracy_score
+from sklearn.model_selection import StratifiedKFold
+from sklearn.metrics import mean_squared_error, roc_auc_score, f1_score, accuracy_score
 
 
 # Data transformation
@@ -112,7 +110,8 @@ def params_LR():
 
 def params_SVM():
     def creator():
-        return make_pipeline(StandardScaler(), SVC(gamma='auto'))
+        return make_pipeline(StandardScaler(), SVC(
+            gamma='auto', probability=True))
 
     params = []
     Cs = [0.001, 0.01, 0.1, 1, 10]
@@ -126,7 +125,7 @@ def params_SVM():
 
 def params_RF():
     def creator():
-        return RandomForestClassifier()
+        return RandomForestClassifier(random_state=42)
 
     n_estimators = [50, 100, 150, 200]
     max_depth = [5, 10, 15, 20]
@@ -140,11 +139,11 @@ def params_RF():
 
 def params_GMM():
     def creator():
-        return GmClassifier()
+        return make_pipeline(StandardScaler(), GmClassifier())
 
     params = []
     for n in range(4):
-        params.append({'n_components': (n + 1) * 4})
+        params.append({'gmclassifier__n_components': (n + 1) * 4})
     return creator, params
 
 
@@ -160,12 +159,14 @@ def select_best_params(model_creator, name, params, X, y):
             clf = model_creator()
             clf.set_params(**param)
             clf.fit(X[train_index], y[train_index])
-            y_pred = clf.predict(X[test_index])
-            scores.append(accuracy_score(y[test_index], y_pred))
+            y_pred = clf.predict_proba(X[test_index])[:, 1]
+            scores.append(mean_squared_error(y[test_index], y_pred))
         avg_scores.append(np.mean(scores))
+        print('Average MSE {} with parameters {}'.format(
+            avg_scores[-1], param))
 
-    best_idx = np.argmax(avg_scores)
-    print('Best average accuracy {} with parameters {}'.format(
+    best_idx = np.argmin(avg_scores)
+    print('Best average MSE {} with parameters {}'.format(
         avg_scores[best_idx], params[best_idx]))
     clf = model_creator()
     clf.set_params(**params[best_idx])
@@ -173,16 +174,24 @@ def select_best_params(model_creator, name, params, X, y):
 
 
 def get_all_model_trainers():
-    models = [params_LR(), params_SVM(), params_RF(), params_GMM()]
-    names = ['LogisticRegression', 'SVM', 'RandomForest', 'GMM']
+    models = [params_LR(), params_SVM(), params_RF()]
+    names = ['LogisticRegression', 'SVM', 'RandomForest']
     return models, names
+
+
+def binarize(y, threshold=0.5):
+    y = np.array(y)
+    y = np.ma.fix_invalid(y, fill_value=threshold)
+    y[y >= threshold] = 1
+    y[y < threshold] = 0
+    return y
 
 
 def select_best_model(X, y):
     # Split into train and test to measure the best model
     # Use cross validation for each model to select best hyperparameters
     train_X, test_X, train_y, test_y = train_test_split(
-        X, y, test_size=0.2)
+        X, y, test_size=0.2, random_state=42)
 
     models, names = get_all_model_trainers()
 
@@ -194,32 +203,23 @@ def select_best_model(X, y):
         best_m = select_best_params(creator, name, params, X, y)
 
         best_m.fit(train_X, train_y)
-        y_pred = best_m.predict(test_X)
-        score = accuracy_score(test_y, y_pred)
+        y_pred = best_m.predict_proba(test_X)[:, 1]
+        score = mean_squared_error(test_y, y_pred)
         scores.append(score)
         created_models.append(best_m)
-        print("%s: %0.5f accuracy" % (name, score))
+        print("%s: %0.5f mean squared error" % (name, score))
 
-    best_idx = np.argmax(scores)
+    best_idx = np.argmin(scores)
     print('Best model {}'.format(names[best_idx]))
+
+    print('Test scores:')
+    y_pred = created_models[best_idx].predict_proba(test_X)[:, 1]
+    print('MSE: {}'.format(mean_squared_error(test_y, y_pred)))
+    print('AUC: {}'.format(roc_auc_score(test_y, y_pred)))
+    print('Accuracy: {}'.format(accuracy_score(test_y, binarize(y_pred))))
+    print('F1: {}'.format(f1_score(test_y, binarize(y_pred))))
+
     return created_models[best_idx]
-
-    # skf = StratifiedKFold(n_splits=5)
-
-    # for model, name in zip(models, names):
-    # scores = []
-    # for train_index, test_index in skf.split(X, y):
-    # model.fit(X[train_index], y[train_index])
-    # y_pred = model.predict(X[test_index])
-    # scores.append(accuracy_score(y[test_index], y_pred))
-
-    # print("%s: %0.5f accuracy with a standard deviation of %0.5f" %
-    #       (name, np.mean(scores), np.std(scores)))
-    # avg_scores.append(np.mean(scores))
-    # scores = cross_val_score(model, X, y, cv=5, scoring='f1_macro')
-    # best_idx = np.argmax(avg_scores)
-    # print('Best model {}'.format(names[best_idx]))
-    # return models[best_idx]
 
 
 def train_model(input_truth, input_pairs, cache_dir):
@@ -241,9 +241,6 @@ def train_model(input_truth, input_pairs, cache_dir):
             text_pairs.append(d['pair'])
             labels.append(gold[d['id']])
             # text_pairs_joined.append(d['pair'][0] + " " + d['pair'][1])
-
-    # train_text_pairs, test_text_pairs, train_labels, test_labels = train_test_split(
-    #     text_pairs, labels, test_size=0.2, random_state=42)
 
     # text_pairs_joined = [text1 + " " + text2 for
     #                      text1, text2 in train_text_pairs]
@@ -285,15 +282,17 @@ def train_model(input_truth, input_pairs, cache_dir):
     # Model training
     y = np.array(labels)
     print('-> Training models')
-    # y_neg = y == 0
-    # y_pos = y == 1
-
-    # model = select_best_model(
-    #     np.vstack((X[y_neg][:20, :], X[y_pos][:20, :])),
-    #     np.concatenate((y[y_neg][:20], y[y_pos][:20])))
 
     model = select_best_model(X, y)
 
     # Retrain on the entire dataset
     model.fit(X, y)
+
+    y_pred = model.predict(X)
+    print('Train scores:')
+    print('MSE: {}'.format(mean_squared_error(y, y_pred)))
+    print('AUC: {}'.format(roc_auc_score(y, y_pred)))
+    print('Accuracy: {}'.format(accuracy_score(y, binarize(y_pred))))
+    print('F1: {}'.format(f1_score(y, binarize(y_pred))))
+
     return model, vecs, scalars
