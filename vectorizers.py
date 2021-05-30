@@ -180,7 +180,7 @@ class PairIter:
         return self.ls[num][p]
 
 
-def get_vectorizers(train_model, most_common_words, text_pairs=None):
+def get_vectorizers(train_model, text_pairs=None):
     if train_model and text_pairs is None:
         raise Exception('Text pairs are required for training')
 
@@ -197,12 +197,10 @@ def get_vectorizers(train_model, most_common_words, text_pairs=None):
                 all_pos = pickle.load(handle)
         else:
             print('Extracting pos tags')
-            all_pos = get_pos_tags(PairIter(text_pairs))
+            all_pos = get_pos_tags(
+                tqdm(PairIter(text_pairs), total=len(text_pairs) * 2))
             with open(path, 'wb') as handle:
                 pickle.dump(all_pos, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
-    def finegrainstopword_most_common(texts):
-        return finegrainstopword(most_common_words)
 
     # Train/load vectorizers
     print('Constructing vectorizers')

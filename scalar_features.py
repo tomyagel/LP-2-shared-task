@@ -177,15 +177,11 @@ def curses(text):
     return cursecount / len(tokens)
 
 
-def get_all_features(most_common_words):
-    def stopword_freq_new_feature(text):
-        return stopword_freq_new(text, most_common_words)
-
+def get_all_features():
     scalar_feature_functions = [
         richness,
         avg_words,
         fleschReadingEaseScore,
-        punctuation_freq,
     ]
 
     return scalar_feature_functions
@@ -196,5 +192,4 @@ def get_all_feature_names():
         'richness',
         'avg_words',
         'fleschReadingEaseScore',
-        'punctuation_freq',
     ]

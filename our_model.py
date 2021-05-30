@@ -65,10 +65,8 @@ def main():
         print('Loading model')
         with open('model' + os.sep + 'model.pickle', 'rb') as handle:
             model = pickle.load(handle)
-        with open('model' + os.sep + 'most_common_words.pickle', 'rb') as handle:
-            most_common_words = pickle.load(handle)
-        vecs = vectorizers.get_vectorizers(False, most_common_words)
-        scalars = scalar_features.get_all_features(most_common_words)
+        vecs = vectorizers.get_vectorizers(False)
+        scalars = scalar_features.get_all_features()
 
     # Evaluate
     test_pairs = args.i + os.sep + 'pairs.jsonl'

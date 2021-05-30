@@ -233,33 +233,16 @@ def train_model(input_truth, input_pairs, cache_dir):
 
     labels = []
     text_pairs = []
-    text_pairs_joined = []
 
     for line in tqdm(open(input_pairs)):
         d = json.loads(line.strip())
         if d['id'] in gold:
             text_pairs.append(d['pair'])
             labels.append(gold[d['id']])
-            # text_pairs_joined.append(d['pair'][0] + " " + d['pair'][1])
-
-    # text_pairs_joined = [text1 + " " + text2 for
-    #                      text1, text2 in train_text_pairs]
-
-    # Most common stop words
-    most_common_words_path = 'model' + os.sep + 'most_common_words.pickle'
-    if os.path.isfile(most_common_words_path):
-        with open(most_common_words_path, 'rb') as handle:
-            most_common_words = pickle.load(handle)
-    else:
-        most_common_words = get_most_common_words(text_pairs_joined)
-        with open(most_common_words_path, 'wb') as handle:
-            pickle.dump(most_common_words, handle,
-                        protocol=pickle.HIGHEST_PROTOCOL)
 
     # Data transformation
-    vecs = vectorizers.get_vectorizers(
-        True, most_common_words, text_pairs)
-    scalars = scalar_features.get_all_features(most_common_words)
+    vecs = vectorizers.get_vectorizers(True, text_pairs)
+    scalars = scalar_features.get_all_features()
     print('-> Transforming data')
 
     # Transform ALL data, not just train
