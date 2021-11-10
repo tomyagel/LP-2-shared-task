@@ -17,7 +17,7 @@ To run the application you should run our_model.py. It accepts a number of CLI p
 
 ## Training model and caching
 
-It is pretty straight forward to traing the model. To see the accepted format check https://pan.webis.de/clef21/pan21-web/author-identification.html#data
+It is pretty straightforward to traing the model. To see the accepted format check https://pan.webis.de/clef21/pan21-web/author-identification.html#data
 Since the training takes long time we have included an option to cache intermediate results. In order to use that pass a cache directory as an argument.
 Each vectorizer that has to be trained will be cached. Additionally, all used feature transformations of training data will be saved separately, allowing an efficient way to swap, remove and add new features. Remember to remove `transformed.pickle` if you want to modify features.
 Furthermore, if you modify the function of the features without changing their name, remember to remove the cache files starting with their names.
